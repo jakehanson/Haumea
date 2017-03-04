@@ -4,4 +4,5 @@ Haumea is a dwarf planet outside of Neptune's orbit. It is an unresolved source,
 References: [Hachisu 1961]
 
 ![alt text](https://github.com/jakehanson/Haumea/blob/master/Methone_Image.jpg)
+
 Image of Saturn's Moon "Methone", which is thought to be similar to Haumeau. (NASA/JPL-Caltech/Space Science Institute)
