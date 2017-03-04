@@ -5,4 +5,5 @@ References: [Hachisu 1961]
 
 ![alt text](https://github.com/jakehanson/Haumea/blob/master/Methone_Image.jpg)
 
-Image of Saturn's Moon "Methone", which is thought to be similar to Haumeau. (NASA/JPL-Caltech/Space Science Institute)
+Image of Saturn's Moon "Methone", which is thought to be similar to Haumeau. 
+Credit: NASA/JPL-Caltech/Space Science Institute
