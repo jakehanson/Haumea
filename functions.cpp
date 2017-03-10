@@ -59,7 +59,7 @@ void Planet::init_density(double a,double b,double c,double rho_rock, double rho
 				f = pow(x/a,2)+pow(y/b,2)+pow(z/c,2);
 				
 				if(f<=1){
-					density[i][j][k] = rho_rock;
+					density[i][j][k] = 2.6;
 				}
 				else{
 					density[i][j][k] = 0.;
@@ -107,8 +107,10 @@ void Planet::init_potential(int L_max){
 	double sum;  // holds the partial sum of phi at i,j,k
 
 	for(int k=0;k<phi_size;k++){
+	//for(int k=0;k<1;k++){
 		phi = phi_array[k];
 		for(int j=0;j<mu_size;j++){
+		//for(int j=0;j<1;j++){
 			mu = mu_array[j];
 			for(int i=0;i<r_size;i++){
 				r = r_array[i];
@@ -117,6 +119,8 @@ void Planet::init_potential(int L_max){
 					sum = sum - (D_3(l,0,k)*P_array[l][j]+1/12.*D_3(l,2,k)*P_array[l][j]*cos(2.*phi));
 				}
 				g_potential[i][j][k] = sum;
+				//std::cout << "Grav Potential:\t" << sum << std::endl;
+
 			}
 		}
 	}
@@ -125,30 +129,39 @@ void Planet::init_potential(int L_max){
 double Planet::D_3(int l, int m, int k){
 	double value=0;
 	for(int s=0;s<r_size-2;s=s+2){
+	//for(int s=0;s<1;s=s+2){
 		value = value+1/6.*(r_array[s+2]-r_array[s])*(f_l(r_array[s],r_array[k],l)*D_2(s,l,m)+4*f_l(r_array[s+1],r_array[k],l)*D_2(s+1,l,m)+f_l(r_array[s+2],r_array[k],l)*D_2(s+2,l,m));
 	}
+	//std::cout << "Value1:\t" << value << std::endl;
 	return value;
 }
 double Planet::D_2(int s, int l, int m){
 	double value=0.;
 	for(int t=0;t<mu_size-2;t=t+2){
+	//for(int t=0;t<1;t=t+2){
 		value = value + 2/3.*(mu_array[t+2]-mu_array[t])*(P_array[l][t]*
 			D_1(t,s,m)+4*P_array[l][t+1]*D_1(t+1,s,m)+P_array[l][t+2]*D_1(t+2,s,m));
 	}
+	//std::cout << "Value2:\t" << value << std::endl;
 	return value;
 }
 double Planet::D_1(int t, int s, int m){
 	double value=0.;
 	for(int u=0;u<phi_size-2;u=u+2){
+	//for(int u=0;u<2;u=u+2){
 		value = value + 1/3.*(phi_array[u+2]-phi_array[u])*(
 			cos(m*phi_array[u])*density[s][t][u]+
 			4*cos(m*phi_array[u+1])*density[s][t][u+1]+
 			cos(m*phi_array[u+2])*density[s][t][u+2]);
 	}
+	//std::cout << "Value3:\t" << value << std::endl;
 	return value;
 }
 double Planet::f_l(double r1, double r2, int l){
-	double value=0.;
+	double value = 0.;
+	if(r1==0 and r2==0){
+		return 0.;
+	}
 	if(r1 <= r2){
 		value = pow(r1,double(l)+2)/pow(r2,double(l)+1);
 	}else{
