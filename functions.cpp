@@ -3,31 +3,34 @@
 #include <cmath>
 //#include <stdexcept>
 
+
 /* Define our constructor. Pass Args to this to create an instance of Planet Class */
-Planet::Planet(int n_r,int n_mu, int n_phi)
+Planet::Planet(int n_r,int n_mu, int n_phi, int L)
 {
 	/* Store information as member of structure */
 	r_size = n_r;
 	mu_size = n_mu;
 	phi_size = n_phi;
+	L_max = L;
 	r_array = std::vector<double>(r_size);
 	mu_array = std::vector<double>(mu_size);
 	phi_array = std::vector<double>(phi_size);
 
 	/* Generate Grid */	
 	density = std::vector<std::vector<std::vector<double>>>
-	(r_size, std::vector< std::vector<double>>(mu_size,std::vector<double>(phi_size,0.0)));
+	(phi_size, std::vector< std::vector<double>>(mu_size,std::vector<double>(r_size,0.0)));
 
 	enthalpy = std::vector<std::vector<std::vector<double>>>
-	(r_size, std::vector< std::vector<double>>(mu_size,std::vector<double>(phi_size,0.0)));
+	(phi_size, std::vector< std::vector<double>>(mu_size,std::vector<double>(r_size,0.0)));
 
 	g_potential = std::vector<std::vector<std::vector<double>>>
-	(r_size, std::vector< std::vector<double>>(mu_size,std::vector<double>(phi_size,0.0)));
+	(phi_size, std::vector< std::vector<double>>(mu_size,std::vector<double>(r_size,0.0)));
 
 }
 
+
 /* Define function to initialize values inside grid */
-void Planet::init_density(double a,double b,double c,double rho_rock, double rho_ice,double r_max)
+void Planet::init_density(double a,double b,double c,double rho_rock,double r_max)
 {
 	double r,mu,phi;
 	double x,y,z;
@@ -45,12 +48,12 @@ void Planet::init_density(double a,double b,double c,double rho_rock, double rho
 	}
 
 	/* Initialize Density */
-	for(int k=0;k<phi_size;k++){
-		phi = phi_array[k];
+	for(int i=0;i<phi_size;i++){
+		phi = phi_array[i];
 		for(int j=0;j<mu_size;j++){
 			mu = mu_array[j];
-			for(int i=0;i<r_size;i++){
-				r = r_array[i];
+			for(int k=0;k<r_size;k++){
+				r = r_array[k];
 
 				x = r*sqrt(1-pow(mu,2))*sin(phi);
 				y = r*sqrt(1-pow(mu,2))*cos(phi);
@@ -59,7 +62,7 @@ void Planet::init_density(double a,double b,double c,double rho_rock, double rho
 				f = pow(x/a,2)+pow(y/b,2)+pow(z/c,2);
 				
 				if(f<=1){
-					density[i][j][k] = 2.6;
+					density[i][j][k] = rho_rock; //dimfull
 				}
 				else{
 					density[i][j][k] = 0.;
@@ -71,12 +74,10 @@ void Planet::init_density(double a,double b,double c,double rho_rock, double rho
 }
 
 /* Define function to calculate legendre polynomials */
-void Planet::init_P(int L_max){
-
+void Planet::init_P(void){
 	P_array = std::vector<std::vector<double>>(L_max,std::vector<double>(mu_size,0.0));
 	double P_minus_2,P_minus_1,P;
 	double P0,P1;
-
 	for(int j=0;j<mu_size;j++){
 		double x = mu_array[j];
 		for(int l=0;l<L_max;l++){
@@ -100,25 +101,23 @@ void Planet::init_P(int L_max){
 	}
 }
 
-/* Define a function to calculate the gravitational potential of the planet */
-void Planet::init_potential(int L_max){
 
+/* Define a function to calculate the gravitational potential of the planet */
+void Planet::init_potential(void){
 	double phi,mu,r;
 	double sum;  // holds the partial sum of phi at i,j,k
-
-	for(int k=0;k<phi_size;k++){
-	//for(int k=0;k<1;k++){
-		phi = phi_array[k];
+	double G = 6.67e-8;
+	for(int i=0;i<phi_size;i++){
+		phi = phi_array[i];
 		for(int j=0;j<mu_size;j++){
-		//for(int j=0;j<1;j++){
 			mu = mu_array[j];
-			for(int i=0;i<r_size;i++){
-				r = r_array[i];
-				sum = 0.;
-				for(int l=0;l<L_max;l=l+2){
-					sum = sum - (D_3(l,0,k)*P_array[l][j]+1/12.*D_3(l,2,k)*P_array[l][j]*cos(2.*phi));
+			for(int k=0;k<r_size;k++){
+				r = r_array[k];
+				sum = -1*D3_array[0][0][k]; // initialize with first term (l=0 m=0)
+				for(int l=2;l<L_max;l=l+2){
+					sum = sum - (D3_array[l][0][k]*P_array[l][j]+1/12.*D3_array[l][2][k]*P_array[l][j]*cos(2.*phi));
 				}
-				g_potential[i][j][k] = sum;
+				g_potential[i][j][k] = G*sum;
 				//std::cout << "Grav Potential:\t" << sum << std::endl;
 
 			}
@@ -126,36 +125,58 @@ void Planet::init_potential(int L_max){
 	}
 }
 
-double Planet::D_3(int l, int m, int k){
-	double value=0;
-	for(int s=0;s<r_size-2;s=s+2){
-	//for(int s=0;s<1;s=s+2){
-		value = value+1/6.*(r_array[s+2]-r_array[s])*(f_l(r_array[s],r_array[k],l)*D_2(s,l,m)+4*f_l(r_array[s+1],r_array[k],l)*D_2(s+1,l,m)+f_l(r_array[s+2],r_array[k],l)*D_2(s+2,l,m));
+void Planet::init_D3(void){
+	D3_array = 	std::vector<std::vector<std::vector<double>>>
+	(L_max, std::vector< std::vector<double>>(3,std::vector<double>(r_size,0.0)));
+	for(int k=0;k<r_size;k++){
+		for(int m=0;m<=2;m=m+2){
+			for(int l=0;l<L_max;l=l+2){	
+				double value=0;
+				for(int s=0;s<r_size-2;s=s+2){
+					value = value+1/6.*(r_array[s+2]-r_array[s])*
+						(f_l(r_array[s],r_array[k],l)*D2_array[s][l][m]+4*f_l(r_array[s+1],r_array[k],l)*
+						D2_array[s+1][l][m]+f_l(r_array[s+2],r_array[k],l)*D2_array[s+2][l][m]);
+				}
+				D3_array[l][m][k] = value;
+			}
+		}
 	}
-	//std::cout << "Value1:\t" << value << std::endl;
-	return value;
+
 }
-double Planet::D_2(int s, int l, int m){
-	double value=0.;
-	for(int t=0;t<mu_size-2;t=t+2){
-	//for(int t=0;t<1;t=t+2){
-		value = value + 2/3.*(mu_array[t+2]-mu_array[t])*(P_array[l][t]*
-			D_1(t,s,m)+4*P_array[l][t+1]*D_1(t+1,s,m)+P_array[l][t+2]*D_1(t+2,s,m));
+void Planet::init_D2(void){
+	D2_array = 	std::vector<std::vector<std::vector<double>>>	
+	(r_size, std::vector< std::vector<double>>(L_max,std::vector<double>(3,0.0)));
+	for(int m=0;m<=2;m=m+2){
+		for(int l=0;l<L_max;l=l+2){
+			for(int s=0;s<r_size;s++){
+				double value = 0.;	
+				for(int t=0;t<mu_size-2;t=t+2){
+					value = value + 1/3.*(mu_array[t+2]-mu_array[t])*(P_array[l][t]*
+						D1_array[t][s][m]+4*P_array[l][t+1]*D1_array[t+1][s][m]+
+						P_array[l][t+2]*D1_array[t+2][s][m]);
+				}
+				D2_array[s][l][m] = value;
+			}
+		}
 	}
-	//std::cout << "Value2:\t" << value << std::endl;
-	return value;
 }
-double Planet::D_1(int t, int s, int m){
-	double value=0.;
-	for(int u=0;u<phi_size-2;u=u+2){
-	//for(int u=0;u<2;u=u+2){
-		value = value + 1/3.*(phi_array[u+2]-phi_array[u])*(
-			cos(m*phi_array[u])*density[s][t][u]+
-			4*cos(m*phi_array[u+1])*density[s][t][u+1]+
-			cos(m*phi_array[u+2])*density[s][t][u+2]);
+void Planet::init_D1(void){
+	D1_array = 	std::vector<std::vector<std::vector<double>>>	
+	(mu_size, std::vector< std::vector<double>>(r_size,std::vector<double>(3,0.0)));
+	for(int m=0;m<=2;m=m+2){
+		for(int s=0;s<r_size;s++){
+			for(int t=0;t<mu_size;t++){
+				double value = 0.;
+				for(int u=0;u<phi_size-2;u=u+2){
+					value = value + 2/3.*(phi_array[u+2]-phi_array[u])*(
+						cos(m*phi_array[u])*density[u][t][s]+
+						4*cos(m*phi_array[u+1])*density[u+1][t][s]+
+						cos(m*phi_array[u+2])*density[u+2][t][s]);
+				}
+				D1_array[t][s][m] = value;
+			}	
+		}
 	}
-	//std::cout << "Value3:\t" << value << std::endl;
-	return value;
 }
 double Planet::f_l(double r1, double r2, int l){
 	double value = 0.;
@@ -175,46 +196,65 @@ double Planet::f_l(double r1, double r2, int l){
 double Planet::get_mass(void){
 	double M=0;
 	for(int k=0;k<r_size-2;k=k+2){
-		M = M + 1/6.*(r_array[k+2]-r_array[k])*(pow(r_array[k],2)*Q_2(k)+4*pow(r_array[k+1],2)*Q_2(k+1)+pow(r_array[k+2],2)*Q_2(k+2));
+		M = M + 1/6.*(r_array[k+2]-r_array[k])*(pow(r_array[k],2)*Q2_array[k]+4*pow(r_array[k+1],2)*
+			Q2_array[k+1]+pow(r_array[k+2],2)*Q2_array[k+2]);
 	}
-	return M;	
+	return M;
 }
-double Planet::Q_2(int k){
-	double value = 0.;
-	for(int j=0;j<mu_size-2;j=j+2){
-		value = value + 1/3.*(mu_array[j+2]-mu_array[j])*(Q_1(j,k)+4*Q_1(j+1,k)+Q_1(j+2,k));
+void Planet::init_Q2(void){
+	Q2_array = std::vector<double>(r_size,0.0);
+	for(int k=0;k<r_size;k++){	
+		double value = 0.;
+		for(int j=0;j<mu_size-2;j=j+2){
+			value = value + 1/3.*(mu_array[j+2]-mu_array[j])*(Q1_array[j][k]+4*Q1_array[j+1][k]+Q1_array[j+2][k]);
+		}
+		Q2_array[k] = value;
 	}
-	return value;
 }
-double Planet::Q_1(int j,int k){
-	double value = 0.;
-	for(int i=0;i<phi_size-2;i=i+2){
-		value = value + 4/6.*(phi_array[i+2]-phi_array[i])*(density[k][j][i]+4*density[k][j][i+1]+density[k][j][i+2]);
+void Planet::init_Q1(void){
+	Q1_array = std::vector<std::vector<double>>(mu_size,std::vector<double>(r_size,0.0));
+	for(int k=0;k<r_size;k++){	
+		for(int j=0;j<mu_size;j++){
+			double value = 0.;
+			for(int i=0;i<phi_size-2;i=i+2){
+				value = value + 4/6.*(phi_array[i+2]-phi_array[i])*(density[i][j][k]+4*density[i+1][j][k]+density[i+2][j][k]);
+			}
+			Q1_array[j][k] = value;
+		}
 	}
-	return value;
 }
+
+
 /* Define a function to check the gravitational potential of the planet */
 double Planet::get_W(void){
 	double W=0;
 	for(int k=0;k<r_size-2;k=k+2){
 		W = W - 1/12.*(r_array[k+2]-r_array[k])*(pow(r_array[k],2)*
-			S_2(k)+4*pow(r_array[k+1],2)*S_2(k+1)+pow(r_array[k+2],2)*S_2(k+2));
+			S2_array[k]+4*pow(r_array[k+1],2)*S2_array[k+1]+pow(r_array[k+2],2)*S2_array[k+2]);
 	}
 	return W;
 }
-double Planet::S_2(int k){
-	double value = 0.;
-	for(int j=0;j<mu_size-2;j=j+2){
-		value = value + 1/3.*(mu_array[j+2]-mu_array[j])*(S_1(j,k)+4*S_1(j+1,k)+S_1(j+2,k));
+void Planet::init_S2(void){
+	S2_array = std::vector<double>(r_size,0.0);
+	for(int k=0;k<r_size;k++){
+		double value = 0.;
+		for(int j=0;j<mu_size-2;j=j+2){
+			value = value + 1/3.*(mu_array[j+2]-mu_array[j])*(S1_array[j][k]+4*S1_array[j+1][k]+S1_array[j+2][k]);
+		}
+		S2_array[k] = value;
 	}
-	return value;
 }
-double Planet::S_1(int j, int k){
-	double value = 0.;
-	for(int i=0;i<phi_size-2;i=i+2){
-		value = value + 1/3.*(phi_array[i+2]-phi_array[i])*(density[k][j][i]*
-			g_potential[k][j][i]+4*density[k][j][i+1]*g_potential[k][j][i+1]+density[k][j][i+2]*g_potential[k][j][i+2]);
+void Planet::init_S1(void){
+	S1_array = std::vector<std::vector<double>>(mu_size,std::vector<double>(r_size,0.0));
+	for(int k=0;k<r_size;k++){
+		for(int j=0;j<mu_size;j++){
+			double value = 0.;
+			for(int i=0;i<phi_size-2;i=i+2){
+				value = value + 2/3.*(phi_array[i+2]-phi_array[i])*(density[i][j][k]*
+					g_potential[i][j][k]+4*density[i+1][j][k]*g_potential[i+1][j][k]+density[i+2][j][k]*g_potential[i+2][j][k]);
+			}
+			S1_array[j][k] = value;
+		}
 	}
-	return value;
 }
 
