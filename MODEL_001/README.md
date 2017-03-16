@@ -6,4 +6,4 @@ This model is a test case designed to see whether the correct c-axis is determin
 
 References: [Hachisu 1961b]
 
-![alt text](https://github.com/jakehanson/Haumea/blob/dev/density_sim.gif)
+![alt text](https://github.com/jakehanson/Haumea/blob/master/MODEL_001/density_sim.gif)
