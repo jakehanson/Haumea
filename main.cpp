@@ -15,7 +15,7 @@ int main(int argc, char** argv)
 	// Initial axes for Ellipsoid (a/b will be fixed in sim)
 	double a = 9.6e5;
 	double b = 7.7e5;
-	double c = 4.95e5;
+	double c = 8.95e5;
 	double r_max = 16./15*a; // maximum r-value > R_e to allow for max r off equator
 	
 	// Minerology
