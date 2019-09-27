@@ -4,3 +4,6 @@ Haumea is a dwarf planet outside of Neptune's orbit. It is an unresolved source,
 References: [Hachisu 1961]
 
 ![alt text](https://github.com/jakehanson/Haumea/blob/master/MODEL_001/density_sim.gif)
+
+## Email
+jake.hanson@asu.edu
